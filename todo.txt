@@ -1,0 +1,43 @@
+Notes and Todo List (numbers are approximate)
+-----------------------------------------------
+1. Obtain more of the original docs.
+2. Implement what I can based on those docs and the yaAGC site.
+3. Ask for clarification on reddit or something because the yaAGC site is.. not great
+	and the mailing list for the yaAGC site doesn't work 
+	(CAPTCHA doesn't show up, so creating an account does not function)
+4. ?
+
+
+
+Notes
+-------
+
+I obtained binaries of the two agc programs (colossus and luminary) by grabbing the
+text octal listing from the yaAGC src and throwing together my own simple program to 
+generate binaries from that. Any binaries distributed with this project may differ from
+what yaAGC expects if yaAGC actually expects banks 2&3 first. This project will expect
+the banks in a binary to be in true numberical order. The addresses for those fixed banks
+work out to also be the right indices for the ROM array that way (there's 2 banks worth
+of actual address space below the ROM-unbanked area).
+
+Somehow the cpu knows whether the instruction was "natural" or created via INDEX. 
+It is possible to use INDEX on TC to TC to places whose opcodes would be other instructions (RESUME, etc).
+I will likely store a last-instruction-was-index bit in the top of B and the rest of the time
+assume that instructions are always 15bits. If a program itself actually writes to BRUPT, the mem_write
+function will zero out the top bit as it does for anything but A&Q. The emulator interrupt code will need
+to copy B to BRUPT directly to avoid the mem_write behavior.
+
+So A and Q are the only 16bit registers, but some docs imply L is 16bit or has a non-accessible
+16th bit? I don't know if that hypothetical 16th bit would be movable into A or not. Non-accessible
+would likely mean not, but the same docs mention it as 16bit along with Q. Even if non-accessible,
+is L treated as 16bit (with zero in the top) for instructions like MASK or the xchange ones?
+
+I don't know if special lowmem locations would get accessed as special if seem thru the banked
+area (A's 16bits, 'editing' locs, etc). My guess is yes, but I don't know for sure.
+
+Might find/start using a library for ANSI codes to display a psuedo-DSKY on the terminal, however,
+I'm basically a full AGC away from needing that.
+
+
+
+
