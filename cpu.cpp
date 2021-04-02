@@ -13,7 +13,10 @@ u16 Output[0x200];
 #define OP_INDEX OCTAL(50000)
 #define OP_EXTEND OCTAL(00006)
 
+#define INSTR_INDEXED (B & 0x8000)
+
 bool extend = false;
+bool interrupts_enabled = false;
 u16 B = 0;  // the hidden place that INDEX puts things, saved into actual RAM (BRUPT) on interrupt
 
 u16 overflow_correct(u16);
@@ -29,21 +32,40 @@ void cpu_step()
 	u32 temp = 0;
 	//TODO: handle interrupts (and unprogrammed sequences?) here
 
-	u16 op = B;   // B contains the next instruction opcode to run, which may have been altered by multiple INDEX
+	u16 op = B & 0x7fff;   // B contains the next instruction opcode to run, which may have been altered by multiple INDEX
 	RAM[Z]++;     // Z should always contain the address of the next instruction
 	u16 addr10 = OCTAL_MASK(op, 1777);  // some instructions use either 10 or 12 bit addresses
 	u16 addr12 = OCTAL_MASK(op, 7777);  // just make things cleaner by getting both ready
 	
-	if( op == OP_EXTEND )
-	{
-		extend = true;
-		B = 0;
-		goto end_of_instruction; // yes, I used a few GOTOs, deal with it
+	if( op == OCTAL(50017) && !INSTR_INDEXED && !extend )
+	{  // RESUME
+		interrupts_enabled = true;
+		RAM[Z] = RAM[ZRUPT];
+		B = RAM[BRUPT];
+		return; // jumping to the end would create undesired indexing.
 	}
-
+	
+	if( (op == 3 || op == 4 || op == 6) && !INSTR_INDEXED && !extend )
+	{  // special instructions made from what would be TC K if it were indexed
+		switch( op )
+		{
+		case 3: // RELINT
+			interrupts_enabled = true;
+			break;
+		case 4: // INHINT
+			interrupts_enabled = false;
+			break;
+		case 6: // EXTEND
+			extend = true;
+			break;		
+		}
+		B = 0;
+		goto end_of_instruction;
+	}
+		
 	if( extend )
 	{
-		if( OCTAL_MASK(op, 76000) == OP_INDEX )
+		if( OCTAL_MASK(op, 70000) == OP_INDEX )
 		{
 			B = mem_read(OCTAL_MASK(op, 7777));
 			//extend = false;  //TODO: does INDEX clear EXTEND or not?
@@ -81,7 +103,7 @@ void cpu_step()
 		
 		extend = false;
 	} else {
-		if( OCTAL_MASK(op, 76000) == OP_INDEX && addr10 != OCTAL(17) )  // INDEX with address 017 is actually RESUME instruction
+		if( OCTAL_MASK(op, 76000) == OP_INDEX )
 		{
 			B = mem_read(OCTAL_MASK(op, 1777));
 			goto end_of_instruction;
@@ -91,7 +113,11 @@ void cpu_step()
 	
 		switch( OCTAL_MASK(op, 70000) )
 		{
-		case 0: break;
+		case 0: // TC K
+			B = mem_read(addr12);
+			RAM[Q] = RAM[Z];
+			RAM[Z] = addr12;
+			return; // we don't want to get to the end B twiddling
 		case OCTAL(10000): 
 			if( OCTAL_MASK(op, 6000) )
 			{ //TCF K
@@ -131,9 +157,11 @@ void cpu_step()
 	}
 
 end_of_instruction:
-	B += mem_read(RAM[Z]); // most of the time, B has been cleared so this is just
+	B = (B ? 0x8000 : 0) | ((B + mem_read(RAM[Z])) & 0x7fff); // most of the time, B has been cleared so this is just
 				     // the next instruction, but if one or more INDEX instructions
-				     // have executed this will contain the accumulated alteration.
+				     // have executed this will contain the accumulated alteration
+				     // and setting the high bit will disallow TC K & INDEX 017 from being interpretted
+				     // as INHINT, RESUME, etc.
 	return;
 }
 
