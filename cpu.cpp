@@ -34,8 +34,9 @@ void cpu_step()
 
 	u16 op = B & 0x7fff;   // B contains the next instruction opcode to run, which may have been altered by multiple INDEX
 	RAM[Z]++;     // Z should always contain the address of the next instruction
-	u16 addr10 = OCTAL_MASK(op, 1777);  // some instructions use either 10 or 12 bit addresses
-	u16 addr12 = OCTAL_MASK(op, 7777);  // just make things cleaner by getting both ready
+	u16 addr10 = OCTAL_MASK(op, 1777);  // instructions use either 10 or 12 bit addresses, or 9bit I/O space
+	u16 addr12 = OCTAL_MASK(op, 7777);  // just make things cleaner by getting all ready
+	u16 kc9 = OCTAL_MASK(op, 777);
 	
 	if( op == OCTAL(50017) && !INSTR_INDEXED && !extend )
 	{  // RESUME
@@ -76,7 +77,19 @@ void cpu_step()
 		
 		switch( OCTAL_MASK(op, 70000) )
 		{
-		case 0: break;
+		case 0: 
+			switch( OCTAL_MASK(op, 07000) )
+			{  // instructions that work on the I/O channels
+			case 0: break;
+			case OCTAL(01000): break;
+			case OCTAL(02000): break;
+			case OCTAL(03000): break;			
+			case OCTAL(04000): break;			
+			case OCTAL(05000): break;			
+			case OCTAL(06000): break;			
+			case OCTAL(07000): break;
+			}		
+			break;
 		case OCTAL(10000): 
 			if( OCTAL_MASK(addr12, 6000) )
 			{ // BZF
@@ -86,9 +99,13 @@ void cpu_step()
 			}
 			break;
 		case OCTAL(20000): break;
-		case OCTAL(30000): break;
-		case OCTAL(40000): break;
-		case OCTAL(50000): break;
+		case OCTAL(30000): // DCA K todo		
+			break;
+		case OCTAL(40000): // DCS K todo
+			break;
+		case OCTAL(50000): // technically INDEX, but should never get here.
+			printf("Fatal error: INDEX should have been handled already\n"); exit(1); 
+			break;
 		case OCTAL(60000): 
 			if( OCTAL_MASK(addr12, 6000) )
 			{ // BZMF
