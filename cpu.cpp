@@ -111,8 +111,11 @@ void cpu_step()
 			{ // BZMF
 				if( RAM[A] == 0 || (RAM[A] & 0x8000) ) RAM[Z] = addr12;			
 			} else {
-				// SU todo			
-			}		
+				// SU
+				temp = mem_read(addr10);
+				mem_write(addr10, temp);
+				RAM[A] = sub16(RAM[A], Is16(addr10) ? temp : signext(temp));
+			}	
 			break;
 		case OCTAL(70000): break;
 		default: printf("Invalid instruction 0%o @ Z=0x%x\n", op, RAM[Z]); exit(1);
@@ -191,6 +194,18 @@ u16 add16(u16 a, u16 b)
 		c++;
 	}
 	
+	return (u16)c;
+}
+
+u16 sub16(u16 a, u16 b)
+{
+	u32 c = a;
+	c -= b;
+	if( c & 0x10000 )
+	{
+		c--;
+	}
+
 	return (u16)c;
 }
 
