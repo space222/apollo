@@ -63,6 +63,7 @@ void mem_write(u16 addr, u16 val)
 	
 	switch( addr )
 	{
+	case OCTAL(07): val = 0; break;
 	case OCTAL(20): val = (val<<15)|(val>>1); break;
 	case OCTAL(21): val = (val>>1)|(val&0x8000); break;
 	case OCTAL(22): val = (val<<1)|(val>>15); break;

@@ -26,6 +26,7 @@ bool IsL(u16);
 bool Is16(u16);
 u16 signext(u16);
 u16 add16(u16,u16);
+u16 sub16(u16,u16);
 
 void cpu_step()
 {
